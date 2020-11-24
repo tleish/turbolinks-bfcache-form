@@ -11,7 +11,7 @@ Note: if using this library with IE you must polyfill [Element.closest()](https:
 
 ### INSTALLATION
 
-1. Download `dist/turbolinks-bfcache-form.js` or `src/turbolinks-bfcache-form.js` 
+1. Download `src/turbolinks-bfcache-form.js` 
 2. Import and initialize TubolinksBfcacheForm and start the listener
 
 ```javascript
@@ -129,7 +129,6 @@ To build from source, first make sure you have the [Yarn package manager](https:
 
 ```
 $ yarn install
-$ yarn build
 ```
 
 Include the resulting `dist/turbolinks.js` file in your application’s JavaScript bundle.
