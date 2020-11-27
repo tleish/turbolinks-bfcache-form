@@ -1,6 +1,6 @@
 {
   "name": "turbolinks-bfcache-form",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Bfcache turbolink forms",
   "main": "./dist/turbolinks-bfcache-form.js",
   "files": [

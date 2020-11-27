@@ -10,34 +10,48 @@
  */
 
 const DATA_TURBOLINKS_BFCACHE_FORM = 'data-turbolinks-bfcache-form';
-const DATA_TURBOLINKS_BFCACHED_FORM = 'data-turbolinks-bfcached-form';
+const DATA_TURBOLINKS_BFCACHED_VALUE = 'data-turbolinks-bfcached-value';
 const DISABLE_BFCACHED_FORM_QUERY = `[data-turbolinks="false"],[${DATA_TURBOLINKS_BFCACHE_FORM}="false"]`;
 
 class TurbolinksFormBfcache {
   static start() {
     document.addEventListener('turbolinks:load', TurbolinksFormBfcache.load);
-    document.addEventListener(
-      'turbolinks:before-cache',
-      TurbolinksFormBfcache.cache
-    );
+    document.addEventListener('turbolinks:before-cache', TurbolinksFormBfcache.beforeCache);
+    window.addEventListener('pageshow', TurbolinksFormBfcache.pageshow);
+    document.addEventListener('change', TurbolinksFormBfcache.change);
   }
 
-  static cache() {
-    TurbolinksFormBfcache.forms.forEach((form) => form.cache());
+  // force onchange event if capture currently focused element, if user presses back/forward after entering
+  // input and presses back or forward button before leaving field
+  static beforeCache() {
+    if (document.activeElement.form) {
+      // if active element is a form field
+      FormElementFactory.cache(document.activeElement);
+    }
+  }
+
+  // re-cache forms on pageshow when view is restored using cache
+  static pageshow() {
+    document.querySelectorAll('form').forEach((form) => {
+      FormElementFactory.cache(form);
+    });
   }
 
   static load() {
-    TurbolinksFormBfcache.forms.forEach((form) => form.restore());
+    document
+      .querySelectorAll(`[${DATA_TURBOLINKS_BFCACHED_VALUE}]`)
+      .forEach((input) => {
+        FormElementFactory.restore(input);
+      });
   }
 
-  static get forms() {
+  static change(e) {
     const turbolinksCacheControl = new TurbolinksCacheControl('bfcache');
-    if (!turbolinksCacheControl.allowCache) {
-      return [];
+    const isFormElement = e.target.form || e.target.tagName.toLowerCase() === 'form';
+    if (isFormElement && turbolinksCacheControl.allowCache) {
+      const turbolinksForm = new TurbolinksForm(e.target.form, turbolinksCacheControl);
+      turbolinksForm.change(e);
     }
-    return [...document.forms].map((form) => {
-      return new TurbolinksForm(form, turbolinksCacheControl);
-    });
   }
 }
 
@@ -49,38 +63,7 @@ class TurbolinksForm {
     this.turbolinksCacheControl = turbolinksCacheControl;
   }
 
-  get allowCache() {
-    return (
-      !this.form.closest(DISABLE_BFCACHED_FORM_QUERY) &&
-      this.turbolinksCacheControl.allowCache
-    );
-  }
-
-  cache = () => {
-    FormElementFactory.cache(this.form);
-    if (this.form.querySelector(`[${DATA_TURBOLINKS_BFCACHED_FORM}]`)) {
-      this.form.setAttribute(DATA_TURBOLINKS_BFCACHE_FORM, true);
-      this.turbolinksCacheControl.add('no-preview');
-    } else {
-      this.form.removeAttribute(DATA_TURBOLINKS_BFCACHE_FORM);
-      this.turbolinksCacheControl.remove();
-    }
-  };
-
-  restore() {
-    if (!this.cachedValue) {
-      return false;
-    }
-    this.form
-      .querySelectorAll(`[${DATA_TURBOLINKS_BFCACHED_FORM}]`)
-      .forEach((input) => {
-        FormElementFactory.restore(input);
-      });
-  }
-
-  get cachedValue() {
-    return this.form.getAttribute(DATA_TURBOLINKS_BFCACHE_FORM);
-  }
+  change = (event) => FormElementFactory.cache(event.target);
 }
 
 const TURBOLINKS_CACHE_CONTROL = 'turbolinks-cache-control';
@@ -89,31 +72,12 @@ class TurbolinksCacheControl {
     this.dataTag = dataTag;
   }
 
-  add(content = 'no-cache') {
-    if (this.metaTag()) {
-      return false;
-    } // meta tag already added
-    document.head.insertAdjacentHTML(
-      'beforeend',
-      `<meta name="${TURBOLINKS_CACHE_CONTROL}" content="${content}" data-tag="${this.dataTag}">`
-    );
-  }
-
-  remove() {
-    const element = this.metaTag(`[data-tag=${this.dataTag}]`);
-    if (element) {
-      element.remove();
-    }
-  }
-
   get allowCache() {
     return (this.metaTag() || {}).content !== 'no-cache';
   }
 
-  metaTag(additionalSelector = '') {
-    return document.head.querySelector(
-      `[name=${TURBOLINKS_CACHE_CONTROL}]${additionalSelector}`
-    );
+  metaTag() {
+    return document.head.querySelector(`[name=${TURBOLINKS_CACHE_CONTROL}]`);
   }
 }
 
@@ -158,7 +122,7 @@ class FormElement {
   }
 
   get cacheKey() {
-    return DATA_TURBOLINKS_BFCACHED_FORM;
+    return DATA_TURBOLINKS_BFCACHED_VALUE;
   }
 
   get attribute() {

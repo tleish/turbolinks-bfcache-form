@@ -7,7 +7,7 @@ describe('FormController', () => {
       document.head.innerHTML = '';
       document.body.innerHTML = `
         <form id="form" data-controller="form">
-          <input id="email" type="email" value="">
+          <input id="email" type="email" tabindex="1" value="">
           <input id="hidden" type="hidden" value="">
           <input id="password" type="password" value="">
           <input id="checkbox" type="checkbox" value="">
@@ -26,186 +26,160 @@ describe('FormController', () => {
       input = document.getElementById('email');
     });
 
-    it('flags form as cached for optimization', () => {
-      TurbolinksBfcacheForm.start();
-      input.value = 'test@email.com';
-      document.dispatchEvent(new Event('turbolinks:before-cache'));
-      expect(form.dataset.turbolinksBfcacheForm).toBe('true');
+    describe('general caching', () => {
+      it('caches form input', () => {
+        TurbolinksBfcacheForm.load();
+        input.value = 'test@email.com';
+        TurbolinksBfcacheForm.change({ target: input });
+        expect(input.dataset.turbolinksBfcachedValue).toBe('test@email.com');
+      });
+
+      it('resets cached form as cached for optimization', () => {
+        TurbolinksBfcacheForm.start();
+        input.value = 'test@email.com';
+        TurbolinksBfcacheForm.change({ target: input });
+        input.value = '';
+        TurbolinksBfcacheForm.change({ target: input });
+        expect(input.dataset.turbolinksBfcachedValue).toBeUndefined();
+      });
     });
 
-    it('resets cached form as cached for optimization', () => {
-      TurbolinksBfcacheForm.start();
-      input.value = 'test@email.com';
-      document.dispatchEvent(new Event('turbolinks:before-cache'));
-      input.value = '';
-      document.dispatchEvent(new Event('turbolinks:before-cache'));
-      expect(form.dataset.turbolinksBfcacheForm).toBeUndefined();
+    describe('pageshow', () => {
+      it('caches fields when page loads from browser and not history', () => {
+        input.value = 'test@email.com';
+        TurbolinksBfcacheForm.pageshow();
+        input.value = '';
+        TurbolinksBfcacheForm.load();
+        expect(input.value).toBe('test@email.com');
+      });
+    });
+
+    describe('beforeCache', () => {
+      it('caches focused field before leaving page', () => {
+        input.tabindex = 1; // must set tabindex for JSDOM .focus() to work
+        input.focus();
+        input.value = 'test@email.com';
+        TurbolinksBfcacheForm.beforeCache();
+        input.value = '';
+        TurbolinksBfcacheForm.load();
+        expect(input.value).toBe('test@email.com');
+      });
     });
 
     describe('no cache', () => {
-      it('does not cache form when data-turbolinks-bfcache-form="false"', () => {
-        TurbolinksBfcacheForm.start();
-        form.dataset.turbolinksBfcacheForm = false;
+      afterEach(() => {
         input.value = 'test@email.com';
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
-        expect(form.dataset.turbolinksBfcacheForm).toBeUndefined();
+        TurbolinksBfcacheForm.change({ target: input });
+        input.value = '';
+        TurbolinksBfcacheForm.load();
+        expect(input.value).toBe('');
+      });
+
+      it('does not cache form when data-turbolinks-bfcache-form="false"', () => {
+        form.dataset.turbolinksBfcacheForm = false;
       });
 
       it('does not cache input when data-turbolinks-bfcache-form="false"', () => {
         input.dataset.turbolinksBfcacheForm = false;
-        TurbolinksBfcacheForm.start();
-        input.value = 'test@email.com';
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
-        input.value = '';
-        TurbolinksBfcacheForm.cache();
-        TurbolinksBfcacheForm.start();
-        expect(input.value).toBe('');
       });
 
       it('does not cache form when data-turbolinks="false"', () => {
-        TurbolinksBfcacheForm.start();
         form.dataset.turbolinks = false;
-        input.value = 'test@email.com';
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
-        expect(form.dataset.turbolinksBfcacheForm).toBeUndefined();
+      });
+
+      it('does not cache form when turbolinks disabled', () => {
+        document.head.innerHTML =
+          '<meta name="turbolinks-cache-control" content="no-cache">';
       });
     });
 
     describe('form inputs', () => {
       it('caches text input', () => {
         const input = document.getElementById('email');
-        TurbolinksBfcacheForm.start();
+        TurbolinksBfcacheForm.load();
         input.value = 'test@email.com';
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
+        TurbolinksBfcacheForm.change({ target: input });
         input.value = '';
-        document.dispatchEvent(new Event('turbolinks:load'));
+        TurbolinksBfcacheForm.load();
+        expect(input.value).toBe('test@email.com');
+      });
+
+      it('caches from form event', () => {
+        const input = document.getElementById('email');
+        TurbolinksBfcacheForm.load();
+        input.value = 'test@email.com';
+        TurbolinksBfcacheForm.change({ target: form });
+        input.value = '';
+        TurbolinksBfcacheForm.load();
         expect(input.value).toBe('test@email.com');
       });
 
       it('does not cache password input', () => {
         const input = document.getElementById('password');
-        TurbolinksBfcacheForm.start();
+        TurbolinksBfcacheForm.load();
         input.value = 'abc123';
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
+        TurbolinksBfcacheForm.change({ target: input });
         input.value = '';
-        document.dispatchEvent(new Event('turbolinks:load'));
+        TurbolinksBfcacheForm.load();
         expect(input.value).toBe('');
       });
 
       it('caches checkbox input', () => {
         const input = document.getElementById('checkbox');
-        TurbolinksBfcacheForm.start();
+        TurbolinksBfcacheForm.load();
         input.checked = true;
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
+        TurbolinksBfcacheForm.change({ target: input });
         input.checked = false;
-        document.dispatchEvent(new Event('turbolinks:load'));
+        TurbolinksBfcacheForm.load();
         expect(input.checked).toBeTruthy();
       });
 
       it('caches radio group', () => {
         const input = document.getElementById('radio1');
-        TurbolinksBfcacheForm.start();
+        TurbolinksBfcacheForm.load();
         input.checked = true;
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
+        TurbolinksBfcacheForm.change({ target: input });
         input.checked = false;
-        document.dispatchEvent(new Event('turbolinks:load'));
+        TurbolinksBfcacheForm.load();
         expect(input.checked).toBeTruthy();
       });
 
       it('caches radio without group', () => {
         const input = document.getElementById('radio1');
         input.removeAttribute('name');
-        TurbolinksBfcacheForm.start();
+        TurbolinksBfcacheForm.load();
         input.checked = true;
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
+        TurbolinksBfcacheForm.change({ target: input });
         input.checked = false;
-        document.dispatchEvent(new Event('turbolinks:load'));
+        TurbolinksBfcacheForm.load();
         expect(input.checked).toBeTruthy();
       });
 
       it('caches select-one', () => {
         const input = document.getElementById('cars');
-        TurbolinksBfcacheForm.start();
+        TurbolinksBfcacheForm.load();
         input.value = 'audi';
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
+        TurbolinksBfcacheForm.change({ target: input });
         input.value = '';
-        document.dispatchEvent(new Event('turbolinks:load'));
+        TurbolinksBfcacheForm.load();
         expect(input.value).toBe('audi');
       });
 
       it('caches select-multiple', () => {
         const input = document.getElementById('cars');
         input.multiple = true;
-        TurbolinksBfcacheForm.start();
+        TurbolinksBfcacheForm.load();
         const options = input.options;
         options[0].selected = false;
         options[1].selected = true;
         options[3].selected = true;
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
+        TurbolinksBfcacheForm.change({ target: input });
         options[0].selected = true;
         options[1].selected = false;
         options[3].selected = false;
-        document.dispatchEvent(new Event('turbolinks:load'));
+        TurbolinksBfcacheForm.load();
         expect(options[1].selected).toBeTruthy();
         expect(options[3].selected).toBeTruthy();
-      });
-    });
-
-    const noCacheHead =
-      '<meta name="turbolinks-cache-control" content="no-cache">';
-    const noPreviewHead =
-      '<meta name="turbolinks-cache-control" content="no-preview">';
-    describe('turbolinks-cache-control', () => {
-      it('adds cache control no-preview when form changes', () => {
-        TurbolinksBfcacheForm.start();
-        input.value = 'test@email.com';
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
-        expect(
-          document.head.querySelector('[name=turbolinks-cache-control]').content
-        ).toBe('no-preview');
-      });
-
-      it('removes no-preview when dirty form is not clean', () => {
-        TurbolinksBfcacheForm.start();
-        input.value = 'test@email.com';
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
-        input.value = '';
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
-        expect(document.head.innerHTML).toBe('');
-      });
-
-      it('does not cache form when turbolinks disabled', () => {
-        document.head.innerHTML = noCacheHead;
-
-        TurbolinksBfcacheForm.start();
-        input.value = 'test@email.com';
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
-        input.value = '';
-        document.dispatchEvent(new Event('turbolinks:load'));
-        expect(input.value).toBe('');
-      });
-
-      it('does not remove no-cache from head when turbolinks cache disabled', () => {
-        document.head.innerHTML = noCacheHead;
-
-        TurbolinksBfcacheForm.start();
-        input.value = 'test@email.com';
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
-        expect(document.head.innerHTML).toBe(noCacheHead);
-        expect(
-          document.head.querySelector('[name=turbolinks-cache-control]').content
-        ).toBe('no-cache');
-      });
-
-      it('does not remove no-preview from head when turbolinks cache disabled', () => {
-        document.head.innerHTML = noPreviewHead;
-
-        TurbolinksBfcacheForm.start();
-        input.value = 'test@email.com';
-        document.dispatchEvent(new Event('turbolinks:before-cache'));
-        expect(
-          document.head.querySelector('[name=turbolinks-cache-control]').content
-        ).toBe('no-preview');
       });
     });
   });
