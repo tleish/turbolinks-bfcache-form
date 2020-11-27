@@ -10,7 +10,7 @@
  */
 
 const DATA_TURBOLINKS_BFCACHE_FORM = 'data-turbolinks-bfcache-form';
-const DATA_TURBOLINKS_BFCACHED_VALUE = 'data-turbolinks-bfcached-value';
+const DATA_TURBOLINKS_BFCACHE_FORM_VALUE = `${DATA_TURBOLINKS_BFCACHE_FORM}-value`;
 const DISABLE_BFCACHED_FORM_QUERY = `[data-turbolinks="false"],[${DATA_TURBOLINKS_BFCACHE_FORM}="false"]`;
 
 class TurbolinksFormBfcache {
@@ -39,7 +39,7 @@ class TurbolinksFormBfcache {
 
   static load() {
     document
-      .querySelectorAll(`[${DATA_TURBOLINKS_BFCACHED_VALUE}]`)
+      .querySelectorAll(`[${DATA_TURBOLINKS_BFCACHE_FORM_VALUE}]`)
       .forEach((input) => {
         FormElementFactory.restore(input);
       });
@@ -122,7 +122,7 @@ class FormElement {
   }
 
   get cacheKey() {
-    return DATA_TURBOLINKS_BFCACHED_VALUE;
+    return DATA_TURBOLINKS_BFCACHE_FORM_VALUE;
   }
 
   get attribute() {

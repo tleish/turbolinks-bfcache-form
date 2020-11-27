@@ -31,7 +31,7 @@ describe('FormController', () => {
         TurbolinksBfcacheForm.load();
         input.value = 'test@email.com';
         TurbolinksBfcacheForm.change({ target: input });
-        expect(input.dataset.turbolinksBfcachedValue).toBe('test@email.com');
+        expect(input.dataset.turbolinksBfcacheFormValue).toBe('test@email.com');
       });
 
       it('resets cached form as cached for optimization', () => {
@@ -40,7 +40,7 @@ describe('FormController', () => {
         TurbolinksBfcacheForm.change({ target: input });
         input.value = '';
         TurbolinksBfcacheForm.change({ target: input });
-        expect(input.dataset.turbolinksBfcachedValue).toBeUndefined();
+        expect(input.dataset.turbolinksBfcacheFormValue).toBeUndefined();
       });
     });
 
